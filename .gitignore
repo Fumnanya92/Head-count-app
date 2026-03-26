@@ -48,10 +48,12 @@ app.*.map.json
 *.lock
 
 # Temporary directories
-tmpclaude-*/
+tmpclaude*
 
 # Temporary files
 nul
 
 # CSV exports (data snapshots)
 estate_headcount_*.csv
+latest_heascount_from_FA_UPDATED-2.xlsx
+all_streets_residents_2024_improved.xlsx

@@ -1,0 +1,53 @@
+name: estate_capture_app
+description: Estate Door-to-Door Capture App
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State management
+  flutter_riverpod: ^2.4.9
+  
+  # Local database
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  
+  # CSV handling
+  csv: ^5.1.1
+
+  # Excel (.xlsx) export
+  excel: ^4.0.6
+  
+  # File/path operations
+  path_provider: ^2.1.1
+  
+  # Sharing files
+  share_plus: ^7.2.1
+  
+  # URL launcher for call/WhatsApp
+  url_launcher: ^6.2.2
+  
+  # Utils
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  
+  # Hive code generation
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.6
+
+flutter:
+  uses-material-design: true
+  
+  # Bundle the CSV file as an asset
+  assets:
+    - assets/residents_seed.csv
+    - assets/latest_heascount_from_FA_UPDATED-2.xlsx
