@@ -742,4 +742,43 @@ class DatabaseService {
           CellStyle(bold: true, backgroundColorHex: totalBg, fontColorHex: navyText);
     }
   }
+
+  // Get all flat numbers for a specific address
+  static List<String> getExistingFlatsForAddress(String address) {
+    final residents = box.values.where((r) =>
+        r.houseAddress.toLowerCase() == address.toLowerCase() &&
+        r.unitFlat != null &&
+        r.unitFlat!.isNotEmpty).toList();
+    return residents.map((r) => r.unitFlat!).toList();
+  }
+
+  // Check for duplicate flat number and get existing flats
+  static Map<String, dynamic> checkFlatNumberDuplicate(String address, String flatNumber) {
+    final existing = box.values.where((r) =>
+        r.houseAddress.toLowerCase() == address.toLowerCase() &&
+        r.unitFlat != null &&
+        r.unitFlat!.isNotEmpty).toList();
+    
+    final existingFlats = existing.map((r) => r.unitFlat!).toList();
+    
+    final duplicate = existing.firstWhere(
+      (r) => r.unitFlat?.toLowerCase() == flatNumber.toLowerCase(),
+      orElse: () => Resident(id: -1, houseAddress: '', occupancyStatus: 'No'),
+    );
+    
+    return {
+      'hasDuplicate': duplicate.id != -1,
+      'conflictingResident': duplicate.id != -1 ? duplicate : null,
+      'existingFlats': existingFlats,
+    };
+  }
+
+  // Get an address to duplicate from (all fields for template)
+  static Resident? getAddressTemplate(String address) {
+    final resident = box.values.firstWhere(
+      (r) => r.houseAddress.toLowerCase() == address.toLowerCase(),
+      orElse: () => Resident(id: -1, houseAddress: '', occupancyStatus: 'No'),
+    );
+    return resident.id != -1 ? resident : null;
+  }
 }

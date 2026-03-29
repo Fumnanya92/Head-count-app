@@ -2,6 +2,19 @@ import 'package:hive/hive.dart';
 
 part 'resident.g.dart';
 
+// Result class for duplicate flat number check
+class RestdentDuplicateCheckResult {
+  final bool hasDuplicate;
+  final Resident? conflictingResident;
+  final List<Resident> existingFlats;
+
+  RestdentDuplicateCheckResult({
+    required this.hasDuplicate,
+    this.conflictingResident,
+    required this.existingFlats,
+  });
+}
+
 @HiveType(typeId: 0)
 class Resident extends HiveObject {
   @HiveField(0)
@@ -108,6 +121,9 @@ class Resident extends HiveObject {
   @HiveField(33)
   String? lastUpdatedBy; // Auto-set to field agent name on every save
 
+  @HiveField(34)
+  String? avatarImagePath; // Path to house image/avatar
+
   Resident({
     required this.id,
     required this.houseAddress,
@@ -143,6 +159,7 @@ class Resident extends HiveObject {
     this.verificationStatus,
     this.firstVerifiedDate,
     this.lastUpdatedBy,
+    this.avatarImagePath,
   }) : updatedAt = updatedAt ?? DateTime.now();
 
   // Helper methods
@@ -191,6 +208,7 @@ class Resident extends HiveObject {
     String? verificationStatus,
     String? firstVerifiedDate,
     String? lastUpdatedBy,
+    String? avatarImagePath,
   }) {
     return Resident(
       id: id ?? this.id,
@@ -227,6 +245,7 @@ class Resident extends HiveObject {
       verificationStatus: verificationStatus ?? this.verificationStatus,
       firstVerifiedDate: firstVerifiedDate ?? this.firstVerifiedDate,
       lastUpdatedBy: lastUpdatedBy ?? this.lastUpdatedBy,
+      avatarImagePath: avatarImagePath ?? this.avatarImagePath,
     );
   }
 
@@ -351,6 +370,7 @@ class Resident extends HiveObject {
       verificationStatus: safeNullString(row.length > 29 ? row[29] : null) ?? 'Unverified',
       firstVerifiedDate: safeNullString(row.length > 30 ? row[30] : null),
       lastUpdatedBy: safeNullString(row.length > 31 ? row[31] : null),
+      avatarImagePath: null,
     );
   }
 

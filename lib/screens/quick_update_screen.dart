@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../models/resident.dart';
 
 class QuickUpdateScreen extends StatefulWidget {
@@ -16,6 +20,7 @@ class QuickUpdateScreen extends StatefulWidget {
 
 class _QuickUpdateScreenState extends State<QuickUpdateScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _imagePicker = ImagePicker();
   
   // Essential fields only for door-to-door speed
   late String _occupancyStatus;
@@ -30,6 +35,7 @@ class _QuickUpdateScreenState extends State<QuickUpdateScreen> {
   late String _notes;
   late bool _followUpNeeded;
   late bool _visited;
+  late String? _avatarImagePath;
   
   int get _totalHeadcount => _adults + _children;
   bool get _isOccupied => _occupancyStatus.toLowerCase() == 'yes' || 
@@ -55,6 +61,124 @@ class _QuickUpdateScreenState extends State<QuickUpdateScreen> {
     _notes = resident.notes ?? '';
     _followUpNeeded = resident.needsFollowUp;
     _visited = resident.visitDate != null && resident.visitDate!.isNotEmpty;
+    _avatarImagePath = resident.avatarImagePath;
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+
+      if (image != null) {
+        // Copy to app documents directory
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final savedImage = await File(image.path).copy(
+          '${appDir.path}/$fileName',
+        );
+
+        if (mounted) {
+          setState(() {
+            _avatarImagePath = savedImage.path;
+            widget.resident.avatarImagePath = savedImage.path;
+          });
+        }
+      }
+    } on PlatformException catch (e) {
+      String errorMessage = 'Error accessing camera: ';
+      switch (e.code) {
+        case 'camera_access_denied':
+          errorMessage += 'Camera access denied. Please enable camera permission in Settings.';
+          break;
+        case 'camera_access_restricted':
+          errorMessage += 'Camera access restricted.';
+          break;
+        case 'capture_cancelled':
+          // User cancelled, no need to show error
+          return;
+        default:
+          errorMessage += 'Unknown error occurred.';
+          break;
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
+
+      if (image != null) {
+        // Copy to app documents directory
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final savedImage = await File(image.path).copy(
+          '${appDir.path}/$fileName',
+        );
+
+        if (mounted) {
+          setState(() {
+            _avatarImagePath = savedImage.path;
+            widget.resident.avatarImagePath = savedImage.path;
+          });
+        }
+      }
+    } on PlatformException catch (e) {
+      String errorMessage = 'Error accessing gallery: ';
+      switch (e.code) {
+        case 'photo_access_denied':
+          errorMessage += 'Gallery access denied. Please enable photo library permission in Settings.';
+          break;
+        case 'photo_access_restricted':
+          errorMessage += 'Gallery access restricted.';
+          break;
+        case 'picker_cancelled':
+          // User cancelled, no need to show error
+          return;
+        default:
+          errorMessage += 'Unknown error occurred.';
+          break;
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image from gallery: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _updateOccupancyStatus(String status) {
@@ -107,6 +231,7 @@ class _QuickUpdateScreenState extends State<QuickUpdateScreen> {
     widget.resident.whatsappNumber = _whatsappNumber;
     widget.resident.notes = _notes;
     widget.resident.followUpNeeded = _followUpNeeded ? 'Yes' : 'No';
+    widget.resident.avatarImagePath = _avatarImagePath;
     widget.resident.visitDate = _visited ? DateTime.now().toString().split(' ')[0] : '';
     widget.resident.isModified = true;
     widget.resident.updatedAt = DateTime.now();
@@ -179,6 +304,91 @@ class _QuickUpdateScreenState extends State<QuickUpdateScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Avatar Section ───────────────────────────────────────────
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue, width: 2),
+                          color: Colors.grey.shade100,
+                        ),
+                        child: _avatarImagePath != null && 
+                               _avatarImagePath!.isNotEmpty &&
+                               File(_avatarImagePath!).existsSync()
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.file(
+                                  File(_avatarImagePath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Center(
+                                      child: Icon(
+                                        Icons.image_not_supported_outlined,
+                                        size: 40,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              )
+                            : Center(
+                                child: Icon(
+                                  Icons.image_not_supported_outlined,
+                                  size: 40,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _pickImage,
+                            icon: const Icon(Icons.camera_alt, size: 18),
+                            label: const Text('Camera'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: _pickImageFromGallery,
+                            icon: const Icon(Icons.photo_library, size: 18),
+                            label: const Text('Gallery'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_avatarImagePath != null && _avatarImagePath!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _avatarImagePath = null;
+                                widget.resident.avatarImagePath = null;
+                              });
+                            },
+                            child: const Text('Remove Photo'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
               // House Address (Read-only)
               Card(
                 color: Colors.grey.shade50,

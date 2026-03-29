@@ -51,13 +51,14 @@ class ResidentAdapter extends TypeAdapter<Resident> {
       verificationStatus: fields[31] as String?,
       firstVerifiedDate: fields[32] as String?,
       lastUpdatedBy: fields[33] as String?,
+      avatarImagePath: fields[34] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Resident obj) {
     writer
-      ..writeByte(34)
+      ..writeByte(35)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -125,7 +126,9 @@ class ResidentAdapter extends TypeAdapter<Resident> {
       ..writeByte(32)
       ..write(obj.firstVerifiedDate)
       ..writeByte(33)
-      ..write(obj.lastUpdatedBy);
+      ..write(obj.lastUpdatedBy)
+      ..writeByte(34)
+      ..write(obj.avatarImagePath);
   }
 
   @override

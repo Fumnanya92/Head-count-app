@@ -10,6 +10,87 @@ import 'resident_detail_screen.dart';
 import 'add_house_screen.dart';
 import 'export_screen.dart';
 
+// Lazy-loading avatar widget
+class LazyAvatarDisplay extends StatefulWidget {
+  final String? imagePath;
+  final String address;
+  final double size;
+
+  const LazyAvatarDisplay({
+    super.key,
+    this.imagePath,
+    required this.address,
+    this.size = 50,
+  });
+
+  @override
+  State<LazyAvatarDisplay> createState() => _LazyAvatarDisplayState();
+}
+
+class _LazyAvatarDisplayState extends State<LazyAvatarDisplay> {
+  bool _showImage = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Delay image loading to avoid rendering all 430 at once
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _showImage = true;
+        });
+      }
+    });
+  }
+
+  String _getInitials() {
+    try {
+      if (widget.address.isEmpty) return 'H';
+      return widget.address[0].toUpperCase();
+    } catch (e) {
+      return 'H';
+    }
+  }
+
+  Widget _buildFallback() {
+    return CircleAvatar(
+      radius: widget.size / 2,
+      backgroundColor: Colors.blue.shade300,
+      child: Text(
+        _getInitials(),
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show placeholder until images can be loaded
+    if (!_showImage || widget.imagePath == null || widget.imagePath!.isEmpty) {
+      return _buildFallback();
+    }
+
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(widget.size / 2),
+        child: Image.file(
+          File(widget.imagePath!),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildFallback();
+          },
+        ),
+      ),
+    );
+  }
+}
+
 enum HouseFilter {
   all,
   notVisited,
@@ -323,6 +404,13 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
+                                // Avatar with lazy loading
+                                LazyAvatarDisplay(
+                                  imagePath: r.avatarImagePath,
+                                  address: r.houseAddress,
+                                  size: 50,
+                                ),
+                                const SizedBox(width: 12),
                                 // Status dot
                                 Container(
                                   width: 4,

@@ -32,6 +32,9 @@ dependencies:
   # URL launcher for call/WhatsApp
   url_launcher: ^6.2.2
   
+  # Image picker for avatars
+  image_picker: ^1.0.4
+  
   # Utils
   intl: ^0.18.1
 
@@ -50,4 +53,4 @@ flutter:
   # Bundle the CSV file as an asset
   assets:
     - assets/residents_seed.csv
-    - assets/latest_heascount_from_FA_UPDATED-2.xlsx
+    # - assets/latest_heascount_from_FA_UPDATED-2.xlsx (not available - using CSV fallback)

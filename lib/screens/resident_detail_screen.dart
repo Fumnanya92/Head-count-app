@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../models/resident.dart';
 import '../services/database_service.dart';
 
@@ -32,6 +35,8 @@ class ResidentDetailScreen extends ConsumerStatefulWidget {
 class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
   late Resident _resident;
   final _formKey = GlobalKey<FormState>();
+  final _imagePicker = ImagePicker();
+  String? _selectedAvatarPath;
 
   // Controllers
   late TextEditingController _addressController;
@@ -93,6 +98,8 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
     }
 
     _resident = resident;
+
+    _selectedAvatarPath = _resident.avatarImagePath;
 
     _addressController = TextEditingController(text: _resident.houseAddress);
     _zoneController = TextEditingController(text: _resident.zoneBlock ?? '');
@@ -173,6 +180,38 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
     return adults + children;
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+
+      if (image != null) {
+        // Copy to app documents directory
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final File savedImage = await File(image.path).copy(
+          '${appDir.path}/$fileName',
+        );
+
+        setState(() {
+          _selectedAvatarPath = savedImage.path;
+          _resident.avatarImagePath = savedImage.path;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _saveResident({bool saveAndNext = false}) async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -184,6 +223,7 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
         int.tryParse(_totalFlatsController.text.trim());
     _resident.unitFlat = _unitFlatController.text.trim();
     _resident.occupancyStatus = _occupancyStatus;
+    _resident.avatarImagePath = _selectedAvatarPath;
     // Keep recordStatus in sync with occupancy
     _resident.recordStatus = _resident.isOccupied ? 'Occupied' : 'Vacant';
     _resident.houseType = _houseType;
@@ -385,6 +425,77 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
+            // ── Avatar Section ─────────────────────────────────────────────
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue, width: 2),
+                        color: Colors.grey.shade100,
+                      ),
+                      child: _selectedAvatarPath != null && 
+                             _selectedAvatarPath!.isNotEmpty &&
+                             File(_selectedAvatarPath!).existsSync()
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.file(
+                                File(_selectedAvatarPath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: Icon(
+                                      Icons.image_not_supported_outlined,
+                                      size: 50,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                          : Center(
+                              child: Icon(
+                                Icons.image_not_supported_outlined,
+                                size: 50,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Update Photo'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                      ),
+                    ),
+                    if (_selectedAvatarPath != null && _selectedAvatarPath!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedAvatarPath = null;
+                              _resident.avatarImagePath = null;
+                            });
+                          },
+                          child: const Text('Remove Photo'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // ── Section A: House Information ──────────────────────────────
             _SectionCard(
               icon: Icons.home,
