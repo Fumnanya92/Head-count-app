@@ -9,6 +9,8 @@ import '../services/database_service.dart';
 import 'resident_detail_screen.dart';
 import 'add_house_screen.dart';
 import 'export_screen.dart';
+import 'bulk_import_screen.dart';
+import 'sync_screen.dart';
 
 // Lazy-loading avatar widget
 class LazyAvatarDisplay extends StatefulWidget {
@@ -240,6 +242,28 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          // Sync data across devices
+          IconButton(
+            icon: const Icon(Icons.cloud_sync),
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const SyncScreen())),
+            tooltip: 'Sync Devices',
+          ),
+          // Bulk import from WhatsApp
+          IconButton(
+            icon: const Icon(Icons.paste),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BulkImportScreen()),
+              );
+              if (result == true) {
+                ref.invalidate(residentsListProvider);
+                setState(() {});
+              }
+            },
+            tooltip: 'Bulk Import (WhatsApp)',
+          ),
           // Quick export
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
