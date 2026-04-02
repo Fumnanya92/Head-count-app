@@ -22,6 +22,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     setState(() => _isExporting = true);
 
     try {
+      // Get RenderBox before async operations to avoid BuildContext issues
+      final box = context.findRenderObject() as RenderBox?;
+      final sharePositionOrigin = box != null
+          ? Rect.fromLTWH(0, 0, box.size.width, box.size.height / 2)
+          : Rect.fromLTWH(0, 0, 375, 100);
+      
       final bytes =
           DatabaseService.exportToXlsx(modifiedOnly: _exportModifiedOnly);
 
@@ -34,10 +40,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       final file = File('${directory.path}/$filename');
       await file.writeAsBytes(bytes);
 
+      // iOS requires sharePositionOrigin to show share sheet
       final result = await Share.shareXFiles(
         [XFile(file.path)],
         subject: 'Estate Headcount Export',
         text: 'Estate headcount data export — $timestamp',
+        sharePositionOrigin: sharePositionOrigin,
       );
 
       if (!mounted) return;

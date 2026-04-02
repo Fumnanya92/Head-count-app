@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/resident.dart';
-import '../providers/resident_provider.dart';
+import '../services/database_service.dart';
 
 class HomeScreenForm extends ConsumerStatefulWidget {
   const HomeScreenForm({super.key});
@@ -56,7 +56,7 @@ class _HomeScreenFormState extends ConsumerState<HomeScreenForm> {
   }
 
   void _loadResidents() {
-    final residents = ref.read(residentsListProvider);
+    final residents = DatabaseService.getAllResidents();
     setState(() {
       _allResidents = residents;
       if (_allResidents.isNotEmpty) {
@@ -188,8 +188,6 @@ class _HomeScreenFormState extends ConsumerState<HomeScreenForm> {
 
   @override
   Widget build(BuildContext context) {
-    final residents = ref.watch(residentsListProvider);
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Estate Door-to-Door Capture'),
@@ -208,7 +206,7 @@ class _HomeScreenFormState extends ConsumerState<HomeScreenForm> {
           ),
         ],
       ),
-      body: residents.isEmpty
+      body: _allResidents.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

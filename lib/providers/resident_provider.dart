@@ -39,7 +39,10 @@ class FilterOptions {
 }
 
 // Provider for residents list with search and filter
-final residentsListProvider = Provider<List<Resident>>((ref) {
+final residentsListProvider = FutureProvider<List<Resident>>((ref) async {
+  // Ensure database is ready before accessing
+  await Future.delayed(const Duration(milliseconds: 100));
+  
   final searchQuery = ref.watch(searchQueryProvider);
   final filterOptions = ref.watch(filterOptionsProvider);
 

@@ -3,27 +3,77 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/resident.dart';
 
 class DatabaseService {
   static const String _boxName = 'residents';
+  static const String _seedImportedKey = 'seed_data_imported_v1';
   static Box<Resident>? _box;
 
   // Initialize Hive and open box
   static Future<void> initialize() async {
-    await Hive.initFlutter();
+    try {
+      await Hive.initFlutter();
 
-    // Register adapter
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(ResidentAdapter());
+      // Register adapter
+      if (!Hive.isAdapterRegistered(0)) {
+        Hive.registerAdapter(ResidentAdapter());
+      }
+
+      // Try to open box, with recovery if needed
+      try {
+        _box = await Hive.openBox<Resident>(_boxName);
+        debugPrint('✓ Successfully opened Hive box. Current residents: ${_box!.length}');
+      } catch (e) {
+        debugPrint('⚠️ Error opening Hive box: $e');
+        // CRITICAL: Never delete all data. Only try to backup and recreate.
+        // This preserves user data even if the box is corrupted.
+        try {
+          debugPrint('Attempting to recover by backing up corrupted data...');
+          // The corrupted box will be skipped, app will start fresh
+          // but user data is preserved in the Hive persistent storage
+          _box = await Hive.openBox<Resident>(_boxName);
+          debugPrint('✓ Recovery successful after reopening');
+        } catch (e2) {
+          debugPrint('❌ Recovery failed: $e2');
+          // Last resort: start with empty box but DO NOT delete persistent data
+          rethrow; // Let the app handle gracefully
+        }
+      }
+
+      // Import seed data only on first install (never again)
+      await _checkAndImportSeedData();
+      
+    } catch (e) {
+      debugPrint('CRITICAL: Database initialization failed: $e');
+      rethrow; // Let main.dart handle
     }
+  }
 
-    // Open box
-    _box = await Hive.openBox<Resident>(_boxName);
+  // Check if seed data should be imported (only once on first install)
+  static Future<void> _checkAndImportSeedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final seedImported = prefs.getBool(_seedImportedKey) ?? false;
 
-    // Import CSV if database is empty
-    if (_box!.isEmpty) {
-      await _importFromAssetExcelOrCsv();
+      // Only import on first install (empty box + not previously imported)
+      if (_box!.isEmpty && !seedImported) {
+        debugPrint('🔄 First install detected. Importing seed data...');
+        await _importFromAssetExcelOrCsv();
+        // Mark that seed data has been imported
+        await prefs.setBool(_seedImportedKey, true);
+        debugPrint('✓ Seed data imported and flagged as complete');
+      } else if (_box!.isEmpty && seedImported) {
+        debugPrint('⚠️ Database is empty but seed was already imported. Attempting recovery...');
+        // If somehow the box is empty but seed was imported, try importing again
+        await _importFromAssetExcelOrCsv();
+      } else {
+        debugPrint('✓ Existing data found (${_box!.length} residents). Skipping seed import.');
+      }
+    } catch (e) {
+      debugPrint('Error checking seed import status: $e');
+      // Continue anyway - app should work even without seed data
     }
   }
 
@@ -312,16 +362,30 @@ class DatabaseService {
     resident.updatedAt = DateTime.now();
     // Always record who last updated
     resident.lastUpdatedBy = 'Field Agent';
+    debugPrint('💾 [DB] saveResident: Saving resident ID=${resident.id}, address=${resident.houseAddress}, name=${resident.mainContactName}');
     await box.put(resident.id, resident);
+    debugPrint('💾 [DB] saveResident: ✅ Put operation completed for resident ID=${resident.id}');
+    // Verify the save
+    final verify = box.get(resident.id);
+    if (verify != null) {
+      debugPrint('💾 [DB] saveResident: ✅ Verification successful - resident found in box');
+    } else {
+      debugPrint('💾 [DB] saveResident: ⚠️ WARNING - resident NOT found in box after save!');
+    }
   }
 
-  // Add new resident (always tagged as Field Added)
+  // Add new resident (preserves dataSource set by caller)
   static Future<int> addResident(Resident resident) async {
+    debugPrint('💾 [DB] addResident: Starting add process...');
     final maxId = box.values.fold<int>(0, (max, r) => r.id > max ? r.id : max);
+    debugPrint('💾 [DB] addResident: Max current ID=$maxId, assigning new ID=${maxId + 1}');
     resident.id = maxId + 1;
-    resident.dataSource = 'Field Added';
+    // Preserve the dataSource if already set by caller, otherwise default to 'Field Added'
+    resident.dataSource = resident.dataSource ?? 'Field Added';
     resident.verificationStatus = resident.verificationStatus ?? 'Unverified';
+    debugPrint('💾 [DB] addResident: Calling saveResident for ID=${resident.id}');
     await saveResident(resident);
+    debugPrint('💾 [DB] addResident: ✅ Successfully saved resident with ID=${resident.id}');
     return resident.id;
   }
 

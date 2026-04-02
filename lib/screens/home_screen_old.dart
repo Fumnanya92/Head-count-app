@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/resident.dart';
 import '../providers/resident_provider.dart';
+import '../services/database_service.dart';
 import 'export_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -30,7 +31,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final residents = ref.watch(residentsListProvider);
+    final residents = DatabaseService.getAllResidents();
     final filterOptions = ref.watch(filterOptionsProvider);
     final statistics = ref.watch(statisticsProvider);
 

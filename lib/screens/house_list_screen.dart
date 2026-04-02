@@ -10,6 +10,7 @@ import 'resident_detail_screen.dart';
 import 'add_house_screen.dart';
 import 'export_screen.dart';
 import 'bulk_import_screen.dart';
+import 'camera_scan_screen.dart';
 import 'sync_screen.dart';
 
 // Lazy-loading avatar widget
@@ -209,13 +210,25 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
 
   Future<void> _quickExport() async {
     try {
+      // Get RenderBox before async operations to avoid BuildContext issues
+      final box = context.findRenderObject() as RenderBox?;
+      final sharePositionOrigin = box != null
+          ? Rect.fromLTWH(0, 0, box.size.width, box.size.height / 2)
+          : Rect.fromLTWH(0, 0, 375, 100);
+      
       final csvData = DatabaseService.exportToCsv();
       final directory = await getApplicationDocumentsDirectory();
       final file = File(
           '${directory.path}/estate_headcount_${DateTime.now().millisecondsSinceEpoch}.csv');
       await file.writeAsString(csvData);
-      await Share.shareXFiles([XFile(file.path)],
-          text: 'Estate Headcount Export');
+      
+      // iOS requires sharePositionOrigin to show share sheet
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Estate Headcount Export',
+        sharePositionOrigin: sharePositionOrigin,
+      );
+      
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Exported!'), backgroundColor: Colors.green));
@@ -228,23 +241,61 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allResidents = ref.watch(residentsListProvider);
-    final filteredResidents = _getFilteredResidents(allResidents);
+    final residentsAsync = ref.watch(residentsListProvider);
     final stats = DatabaseService.getStatistics();
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text(
-          'Estate Door-to-Door',
-          style: TextStyle(fontWeight: FontWeight.bold),
+    return residentsAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(
+          title: const Text('Estate Door-to-Door', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
         ),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        actions: [
-          // Sync data across devices
-          IconButton(
-            icon: const Icon(Icons.cloud_sync),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stackTrace) {
+        debugPrint('Provider error: $error\n$stackTrace');
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Estate Door-to-Door', style: TextStyle(fontWeight: FontWeight.bold)),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text('Error loading data'),
+                const SizedBox(height: 8),
+                Text(error.toString(), textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(residentsListProvider),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      data: (allResidents) {
+        final filteredResidents = _getFilteredResidents(allResidents);
+        
+        return Scaffold(
+          backgroundColor: Colors.grey.shade50,
+          appBar: AppBar(
+            title: const Text(
+              'Estate Door-to-Door',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            actions: [
+              // Sync data across devices
+              IconButton(
+                icon: const Icon(Icons.cloud_sync),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const SyncScreen())),
             tooltip: 'Sync Devices',
@@ -263,6 +314,21 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
               }
             },
             tooltip: 'Bulk Import (WhatsApp)',
+          ),
+          // Camera scan for OCR
+          IconButton(
+            icon: const Icon(Icons.camera_alt),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CameraScanScreen()),
+              );
+              if (result == true) {
+                ref.invalidate(residentsListProvider);
+                setState(() {});
+              }
+            },
+            tooltip: 'Scan with Camera (OCR)',
           ),
           // Quick export
           IconButton(
@@ -530,6 +596,8 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
         icon: const Icon(Icons.add_home),
         label: const Text('Add House'),
       ),
+    );
+      },
     );
   }
 }

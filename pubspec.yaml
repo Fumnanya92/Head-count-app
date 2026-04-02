@@ -35,6 +35,12 @@ dependencies:
   # Image picker for avatars
   image_picker: ^1.0.4
   
+  # Shared preferences for app state tracking
+  shared_preferences: ^2.2.2
+  
+  # OCR for camera text recognition (text_recognition only, avoids iOS compatibility issues)
+  google_mlkit_text_recognition: ^0.15.1
+  
   # Utils
   intl: ^0.18.1
 

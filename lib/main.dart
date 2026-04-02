@@ -6,8 +6,13 @@ import 'services/database_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize database
-  await DatabaseService.initialize();
+  try {
+    // Initialize database
+    await DatabaseService.initialize();
+  } catch (e) {
+    debugPrint('DATABASE INITIALIZATION ERROR: $e');
+    // Continue anyway - database might recover
+  }
   
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -48,15 +53,24 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigateToHome() async {
-    // Wait a moment to show splash
-    await Future.delayed(const Duration(seconds: 1));
-    
-    if (!mounted) return;
-    
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HouseListScreen()),
-    );
+    try {
+      // Wait a moment to show splash
+      await Future.delayed(const Duration(seconds: 1));
+      
+      if (!mounted) return;
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HouseListScreen()),
+      );
+    } catch (e) {
+      debugPrint('NAVIGATION ERROR: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   @override
