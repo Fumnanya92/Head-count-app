@@ -345,7 +345,9 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Column(
         children: [
           // Progress summary strip
           Container(
@@ -579,6 +581,7 @@ class _HouseListScreenState extends ConsumerState<HouseListScreen> {
                   ),
           ),
         ],
+      ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {

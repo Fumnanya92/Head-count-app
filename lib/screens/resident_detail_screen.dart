@@ -420,11 +420,13 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: [
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            children: [
             // ── Avatar Section ─────────────────────────────────────────────
             Card(
               elevation: 2,
@@ -662,14 +664,25 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _phoneController,
-                  decoration: _inputDeco('Phone Number', hint: '08012345678'),
+                  decoration: _inputDeco('Phone Number', hint: '08012345678 or +234...'),
                   keyboardType: TextInputType.phone,
                   onChanged: (_) => setState(() {}),
                   validator: (v) {
-                    if (v != null && v.isNotEmpty && v.length != 11) {
-                      return 'Phone must be 11 digits';
+                    if (v == null || v.isEmpty) return null;
+                    final trimmed = v.trim();
+                    // Accept 080... + 9 digits = 11 total
+                    if (trimmed.startsWith('0') && trimmed.length == 11) {
+                      return null;
                     }
-                    return null;
+                    // Accept +234 + 10 digits = 13 total
+                    if (trimmed.startsWith('+234') && trimmed.length == 13) {
+                      return null;
+                    }
+                    // Accept 234 + 10 digits = 13 total
+                    if (trimmed.startsWith('234') && trimmed.length == 13) {
+                      return null;
+                    }
+                    return 'Phone: 080... (11 digits) or +234... (13 chars)';
                   },
                 ),
                 const SizedBox(height: 8),
@@ -856,6 +869,7 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
