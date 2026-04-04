@@ -674,15 +674,15 @@ class _ResidentDetailScreenState extends ConsumerState<ResidentDetailScreen> {
                     if (trimmed.startsWith('0') && trimmed.length == 11) {
                       return null;
                     }
-                    // Accept +234 + 10 digits = 13 total
-                    if (trimmed.startsWith('+234') && trimmed.length == 13) {
+                    // Accept +234 + 10 digits = 14 total
+                    if (trimmed.startsWith('+234') && trimmed.length == 14) {
                       return null;
                     }
                     // Accept 234 + 10 digits = 13 total
                     if (trimmed.startsWith('234') && trimmed.length == 13) {
                       return null;
                     }
-                    return 'Phone: 080... (11 digits) or +234... (13 chars)';
+                    return 'Phone: 080... (11 digits) or +234... (14 chars)';
                   },
                 ),
                 const SizedBox(height: 8),
